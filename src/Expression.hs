@@ -34,7 +34,7 @@ import Hadrian.Oracles.TextFile (readPackageDataFile)
 getPackageData :: (PackageData -> a) -> Expr a
 getPackageData key = do
   ctx   <- getContext
-  Just cabal <- expr (readPackageDataFile ctx)
+  ~(Just cabal) <- expr (readPackageDataFile ctx)
   return $ key cabal
 
 -- | Is the build currently in the provided stage?

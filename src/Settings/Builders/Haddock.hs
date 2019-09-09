@@ -34,11 +34,11 @@ haddockBuilderArgs = withHsPackage $ \ctx -> mconcat
         pkg      <- getPackage
         root     <- getBuildRoot
         path     <- getBuildPath
-        Just version  <- expr $ pkgVersion  ctx
-        Just synopsis <- expr $ pkgSynopsis ctx
+        ~(Just version)  <- expr $ pkgVersion  ctx
+        ~(Just synopsis) <- expr $ pkgSynopsis ctx
         deps     <- getPackageData PD.depNames
         haddocks <- expr . haddockDependencies =<< getContext
-        Just hVersion <- expr $ pkgVersion ctx
+        ~(Just hVersion) <- expr $ pkgVersion ctx
         ghcOpts  <- haddockGhcArgs
         mconcat
             [ arg "--verbosity=0"

@@ -1,7 +1,9 @@
 module Rules.Register (configurePackage, registerPackage) where
 
-import Distribution.ParseUtils
 import Distribution.Version (Version)
+import qualified Distribution.Parsec as Cabal
+import qualified Distribution.Types.PackageName as Cabal
+import qualified Distribution.Types.PackageId as Cabal
 
 import Base
 import Context
@@ -12,14 +14,21 @@ import Utilities
 
 import Hadrian.Expression
 
-import qualified Distribution.Compat.ReadP   as Parse
 import qualified System.Directory            as IO
 import qualified Hadrian.Haskell.Cabal.Parse as Cabal
 
-parseCabalName :: String -> Maybe (String, Version)
-parseCabalName = readPToMaybe parse
+getPackageNameFromConfFile :: Monad m => FilePath -> m String
+getPackageNameFromConfFile conf
+   | takeBaseName conf == "rts" = return "rts"
+   | otherwise = case parseCabalName (takeBaseName conf) of
+      Left err -> error $ "getPackageNameFromConfFile: couldn't parse " ++ takeBaseName conf ++ ": " ++ err
+      Right (name, _) -> return name
+
+parseCabalName :: String -> Either String (String, Version)
+parseCabalName = fmap f . Cabal.eitherParsec
   where
-    parse = (,) <$> (parsePackageName <* Parse.char '-') <*> parseOptVersion
+    f :: Cabal.PackageId -> (String, Version)
+    f pkg_id = (Cabal.unPackageName $ Cabal.pkgName pkg_id, Cabal.pkgVersion pkg_id)
 
 -- | Configure a package and build its @setup-config@ file.
 configurePackage :: Context -> Rules ()
@@ -44,8 +53,7 @@ registerPackage rs context@Context {..} = do
         settings <- libPath context <&> (-/- "settings")
         platformConstants <- libPath context <&> (-/- "platformConstants")
         need [settings, platformConstants]
-        let Just pkgName | takeBaseName conf == "rts" = Just "rts"
-                         | otherwise = fst <$> parseCabalName (takeBaseName conf)
+        pkgName <- getPackageNameFromConfFile conf
         let Just pkg = findPackageByName pkgName
         isBoot <- (pkg `notElem`) <$> stagePackages Stage0
         case stage of
